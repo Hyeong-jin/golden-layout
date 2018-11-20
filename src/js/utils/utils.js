@@ -1,6 +1,6 @@
+lm.utils.F = function() {
+};
 
-lm.utils.F = function () {};
-	
 lm.utils.extend = function( subClass, superClass ) {
 	subClass.prototype = lm.utils.createObject( superClass.prototype );
 	subClass.prototype.contructor = subClass;
@@ -29,8 +29,15 @@ lm.utils.objectKeys = function( object ) {
 	}
 };
 
+lm.utils.getHashValue = function( key ) {
+	var matches = location.hash.match( new RegExp( key + '=([^&]*)' ) );
+	return matches ? matches[ 1 ] : null;
+};
+
 lm.utils.getQueryStringParam = function( param ) {
-	if( !window.location.search ) {
+	if( window.location.hash ) {
+		return lm.utils.getHashValue( param );
+	} else if( !window.location.search ) {
 		return null;
 	}
 
@@ -56,7 +63,7 @@ lm.utils.copy = function( target, source ) {
 
 /**
  * This is based on Paul Irish's shim, but looks quite odd in comparison. Why?
- * Because 
+ * Because
  * a) it shouldn't affect the global requestAnimationFrame function
  * b) it shouldn't pass on the time that has passed
  *
@@ -64,22 +71,22 @@ lm.utils.copy = function( target, source ) {
  *
  * @returns {void}
  */
-lm.utils.animFrame = function( fn ){
-	return ( window.requestAnimationFrame     ||
+lm.utils.animFrame = function( fn ) {
+	return ( window.requestAnimationFrame ||
 	window.webkitRequestAnimationFrame ||
-	window.mozRequestAnimationFrame    ||
-	function( callback ){
-		window.setTimeout(callback, 1000 / 60);
-	})(function(){
+	window.mozRequestAnimationFrame ||
+	function( callback ) {
+		window.setTimeout( callback, 1000 / 60 );
+	})( function() {
 		fn();
-	});
+	} );
 };
 
 lm.utils.indexOf = function( needle, haystack ) {
 	if( !( haystack instanceof Array ) ) {
 		throw new Error( 'Haystack is not an Array' );
 	}
-	
+
 	if( haystack.indexOf ) {
 		return haystack.indexOf( needle );
 	} else {
@@ -92,24 +99,34 @@ lm.utils.indexOf = function( needle, haystack ) {
 	}
 };
 
+if( typeof /./ != 'function' && typeof Int8Array != 'object' ) {
+	lm.utils.isFunction = function( obj ) {
+		return typeof obj == 'function' || false;
+	};
+} else {
+	lm.utils.isFunction = function( obj ) {
+		return toString.call( obj ) === '[object Function]';
+	};
+}
+
 lm.utils.fnBind = function( fn, context, boundArgs ) {
 
 	if( Function.prototype.bind !== undefined ) {
 		return Function.prototype.bind.apply( fn, [ context ].concat( boundArgs || [] ) );
 	}
 
-	var bound = function () {
+	var bound = function() {
 
 		// Join the already applied arguments to the now called ones (after converting to an array again).
-		var args = ( boundArgs || [] ).concat(Array.prototype.slice.call(arguments, 0));
+		var args = ( boundArgs || [] ).concat( Array.prototype.slice.call( arguments, 0 ) );
 
 		// If not being called as a constructor
-		if (!(this instanceof bound)){
+		if( !(this instanceof bound) ) {
 			// return the result of the function called bound to target and partially applied.
-			return fn.apply(context, args);
+			return fn.apply( context, args );
 		}
 		// If being called as a constructor, apply the function bound to self.
-		fn.apply(this, args);
+		fn.apply( this, args );
 	};
 	// Attach the prototype of the function to our newly created function.
 	bound.prototype = fn.prototype;
@@ -136,22 +153,22 @@ lm.utils.now = function() {
 
 lm.utils.getUniqueId = function() {
 	return ( Math.random() * 1000000000000000 )
-		.toString(36)
+		.toString( 36 )
 		.replace( '.', '' );
 };
 
 /**
  * A basic XSS filter. It is ultimately up to the
- * implementing developer to make sure their particular 
+ * implementing developer to make sure their particular
  * applications and usecases are save from cross site scripting attacks
  *
  * @param   {String} input
- * @param 	{Boolean} keepTags
+ * @param    {Boolean} keepTags
  *
  * @returns {String} filtered input
  */
 lm.utils.filterXss = function( input, keepTags ) {
-	
+
 	var output = input
 		.replace( /javascript/gi, 'j&#97;vascript' )
 		.replace( /expression/gi, 'expr&#101;ssion' )

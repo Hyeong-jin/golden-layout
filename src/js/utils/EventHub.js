@@ -10,7 +10,7 @@
  * - Propagate events from children to the other children (but not the emitting one) and the parent
  *
  * @constructor
- * 
+ *
  * @param {lm.LayoutManager} layoutManager
  */
 lm.utils.EventHub = function( layoutManager ) {
@@ -19,7 +19,8 @@ lm.utils.EventHub = function( layoutManager ) {
 	this._dontPropagateToParent = null;
 	this._childEventSource = null;
 	this.on( lm.utils.EventEmitter.ALL_EVENT, lm.utils.fnBind( this._onEventFromThis, this ) );
-	$(window).on( 'gl_child_event', lm.utils.fnBind( this._onEventFromChild, this ) );
+	this._boundOnEventFromChild = lm.utils.fnBind( this._onEventFromChild, this );
+	$( window ).on( 'gl_child_event', this._boundOnEventFromChild );
 };
 
 /**
@@ -28,7 +29,7 @@ lm.utils.EventHub = function( layoutManager ) {
  * @private
  *
  * @param {Mixed}
- * 
+ *
  * @returns {void}
  */
 lm.utils.EventHub.prototype._onEventFromThis = function() {
@@ -80,11 +81,11 @@ lm.utils.EventHub.prototype._onEventFromChild = function( event ) {
  */
 lm.utils.EventHub.prototype._propagateToParent = function( args ) {
 	var event,
-		eventName = 'gl_child_event'; 
+		eventName = 'gl_child_event';
 
-	if (document.createEvent) {
+	if( document.createEvent ) {
 		event = window.opener.document.createEvent( 'HTMLEvents' );
-		event.initEvent( eventName, true, true);
+		event.initEvent( eventName, true, true );
 	} else {
 		event = window.opener.document.createEventObject();
 		event.eventType = eventName;
@@ -94,8 +95,8 @@ lm.utils.EventHub.prototype._propagateToParent = function( args ) {
 	event.__glArgs = args;
 	event.__gl = this._layoutManager;
 
-	if (document.createEvent) {
-		window.opener.dispatchEvent(event);
+	if( document.createEvent ) {
+		window.opener.dispatchEvent( event );
 	} else {
 		window.opener.fireEvent( 'on' + event.eventType, event );
 	}
@@ -115,8 +116,20 @@ lm.utils.EventHub.prototype._propagateToChildren = function( args ) {
 	for( i = 0; i < this._layoutManager.openPopouts.length; i++ ) {
 		childGl = this._layoutManager.openPopouts[ i ].getGlInstance();
 
-		if( childGl !== this._childEventSource ) {
+		if( childGl && childGl !== this._childEventSource ) {
 			childGl.eventHub._$onEventFromParent( args );
 		}
 	}
+};
+
+
+/**
+ * Destroys the EventHub
+ *
+ * @public
+ * @returns {void}
+ */
+
+lm.utils.EventHub.prototype.destroy = function() {
+	$( window ).off( 'gl_child_event', this._boundOnEventFromChild );
 };

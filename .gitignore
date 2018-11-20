@@ -1,1 +1,8 @@
 node_modules
+typings
+.idea
+npm-debug.log
+dist/
+dist/**
+build/
+package-lock.json

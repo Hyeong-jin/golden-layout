@@ -14,31 +14,33 @@ lm.controls.Tab = function( header, contentItem ) {
 	this.closeElement = this.element.find( '.lm_close_tab' );
 	this.closeElement[ contentItem.config.isClosable ? 'show' : 'hide' ]();
 	this.isActive = false;
-	
+
 	this.setTitle( contentItem.config.title );
 	this.contentItem.on( 'titleChanged', this.setTitle, this );
 
 	this._layoutManager = this.contentItem.layoutManager;
 
-	if( 
+	if(
 		this._layoutManager.config.settings.reorderEnabled === true &&
 		contentItem.config.reorderEnabled === true
 	) {
 		this._dragListener = new lm.utils.DragListener( this.element );
 		this._dragListener.on( 'dragStart', this._onDragStart, this );
+		this.contentItem.on( 'destroy', this._dragListener.destroy, this._dragListener );
 	}
-	
+
 	this._onTabClickFn = lm.utils.fnBind( this._onTabClick, this );
 	this._onCloseClickFn = lm.utils.fnBind( this._onCloseClick, this );
 
-	this.element.click( this._onTabClickFn );
+	this.element.on( 'mousedown touchstart', this._onTabClickFn );
 
-	if( this._layoutManager.config.settings.showCloseIcon === true ) {
-		this.closeElement.click( this._onCloseClickFn );
+	if( this.contentItem.config.isClosable ) {
+		this.closeElement.on( 'click touchstart', this._onCloseClickFn );
+		this.closeElement.on('mousedown', this._onCloseMousedown);
 	} else {
 		this.closeElement.remove();
 	}
-	
+
 	this.contentItem.tab = this;
 	this.contentItem.emit( 'tab', this );
 	this.contentItem.layoutManager.emit( 'tabCreated', this );
@@ -55,14 +57,14 @@ lm.controls.Tab = function( header, contentItem ) {
  * @type {String}
  */
 lm.controls.Tab._template = '<li class="lm_tab"><i class="lm_left"></i>' +
-							'<span class="lm_title"></span><div class="lm_close_tab"></div>' +
-							'<i class="lm_right"></i></li>';
+	'<span class="lm_title"></span><div class="lm_close_tab"></div>' +
+	'<i class="lm_right"></i></li>';
 
-lm.utils.copy( lm.controls.Tab.prototype,{
+lm.utils.copy( lm.controls.Tab.prototype, {
 
 	/**
 	 * Sets the tab's title to the provided string and sets
-	 * its title attribute to a pure text representation (without 
+	 * its title attribute to a pure text representation (without
 	 * html tags) of the same string.
 	 *
 	 * @public
@@ -74,7 +76,7 @@ lm.utils.copy( lm.controls.Tab.prototype,{
 	},
 
 	/**
-	 * Sets this tab's active state. To programmatically 
+	 * Sets this tab's active state. To programmatically
 	 * switch tabs, use header.setActiveContentItem( item ) instead.
 	 *
 	 * @public
@@ -89,7 +91,7 @@ lm.utils.copy( lm.controls.Tab.prototype,{
 		if( isActive ) {
 			this.element.addClass( 'lm_active' );
 		} else {
-			this.element.removeClass( 'lm_active');
+			this.element.removeClass( 'lm_active' );
 		}
 	},
 
@@ -100,8 +102,13 @@ lm.utils.copy( lm.controls.Tab.prototype,{
 	 * @returns {void}
 	 */
 	_$destroy: function() {
-		this.element.off( 'click', this._onTabClickFn );
-		this.closeElement.off( 'click', this._onCloseClickFn );
+		this.element.off( 'mousedown touchstart', this._onTabClickFn );
+		this.closeElement.off( 'click touchstart', this._onCloseClickFn );
+		if( this._dragListener ) {
+			this.contentItem.off( 'destroy', this._dragListener.destroy, this._dragListener );
+			this._dragListener.off( 'dragStart', this._onDragStart );
+			this._dragListener = null;
+		}
 		this.element.remove();
 	},
 
@@ -115,6 +122,8 @@ lm.utils.copy( lm.controls.Tab.prototype,{
 	 * @returns {void}
 	 */
 	_onDragStart: function( x, y ) {
+		if( !this.header._canDestroy )
+			return null;
 		if( this.contentItem.parent.isMaximised === true ) {
 			this.contentItem.parent.toggleMaximise();
 		}
@@ -132,15 +141,15 @@ lm.utils.copy( lm.controls.Tab.prototype,{
 	 * Callback when the tab is clicked
 	 *
 	 * @param {jQuery DOM event} event
-	 * 
+	 *
 	 * @private
 	 * @returns {void}
 	 */
 	_onTabClick: function( event ) {
-		// left mouse button
-		if( event.button === 0 ) {
+		// left mouse button or tap
+		if( event.button === 0 || event.type === 'touchstart' ) {
 			this.header.parent.setActiveContentItem( this.contentItem );
-
+			
 		// middle mouse button
 		} else if( event.button === 1 && this.contentItem.config.isClosable ) {
 			this._onCloseClick( event );
@@ -158,6 +167,22 @@ lm.utils.copy( lm.controls.Tab.prototype,{
 	 */
 	_onCloseClick: function( event ) {
 		event.stopPropagation();
+		if( !this.header._canDestroy )
+			return;
 		this.header.parent.removeChild( this.contentItem );
+	},
+
+
+	/**
+	 * Callback to capture tab close button mousedown
+	 * to prevent tab from activating.
+	 *
+	 * @param (jQuery DOM event) event
+	 *
+	 * @private
+	 * @returns {void}
+	 */
+	_onCloseMousedown: function(event) {
+		event.stopPropagation();
 	}
-});
+} );

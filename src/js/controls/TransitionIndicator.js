@@ -18,12 +18,12 @@ lm.utils.copy( lm.controls.TransitionIndicator.prototype, {
 		 * TODO - This is not quite as cool as expected. Review.
 		 */
 		return;
-		this._toElement = toElement;
-		this._animationStartTime = lm.utils.now();
-		this._fromDimensions = this._measure( fromElement );
-		this._fromDimensions.opacity = 0.8;
-		this._element.show().css( this._fromDimensions );
-		lm.utils.animFrame( lm.utils.fnBind( this._nextAnimationFrame, this ) );
+		// this._toElement = toElement;
+		// this._animationStartTime = lm.utils.now();
+		// this._fromDimensions = this._measure( fromElement );
+		// this._fromDimensions.opacity = 0.8;
+		// this._element.show().css( this._fromDimensions );
+		// lm.utils.animFrame( lm.utils.fnBind( this._nextAnimationFrame, this ) );
 	},
 
 	_nextAnimationFrame: function() {
@@ -41,10 +41,10 @@ lm.utils.copy( lm.controls.TransitionIndicator.prototype, {
 
 		for( cssProperty in this._fromDimensions ) {
 			currentFrameStyles[ cssProperty ] = this._fromDimensions[ cssProperty ] +
-			( toDimensions[ cssProperty] - this._fromDimensions[ cssProperty ] ) *
-			animationProgress;
+				( toDimensions[ cssProperty ] - this._fromDimensions[ cssProperty ] ) *
+				animationProgress;
 		}
-		
+
 		this._element.css( currentFrameStyles );
 		lm.utils.animFrame( lm.utils.fnBind( this._nextAnimationFrame, this ) );
 	},
@@ -59,4 +59,4 @@ lm.utils.copy( lm.controls.TransitionIndicator.prototype, {
 			height: element.outerHeight()
 		};
 	}
-});
+} );

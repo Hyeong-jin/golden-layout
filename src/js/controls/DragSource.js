@@ -18,7 +18,7 @@ lm.controls.DragSource = function( element, itemConfig, layoutManager ) {
 };
 
 lm.utils.copy( lm.controls.DragSource.prototype, {
-	
+
 	/**
 	 * Called initially and after every drag
 	 *
@@ -28,7 +28,7 @@ lm.utils.copy( lm.controls.DragSource.prototype, {
 		if( this._dragListener !== null ) {
 			this._dragListener.destroy();
 		}
-		
+
 		this._dragListener = new lm.utils.DragListener( this._element );
 		this._dragListener.on( 'dragStart', this._onDragStart, this );
 		this._dragListener.on( 'dragStop', this._createDragListener, this );
@@ -43,9 +43,13 @@ lm.utils.copy( lm.controls.DragSource.prototype, {
 	 * @returns {void}
 	 */
 	_onDragStart: function( x, y ) {
-		var contentItem = this._layoutManager._$normalizeContentItem( this._itemConfig ),
+		var itemConfig = this._itemConfig;
+		if( lm.utils.isFunction( itemConfig ) ) {
+			itemConfig = itemConfig();
+		}
+		var contentItem = this._layoutManager._$normalizeContentItem( $.extend( true, {}, itemConfig ) ),
 			dragProxy = new lm.controls.DragProxy( x, y, this._dragListener, this._layoutManager, contentItem, null );
-		
+
 		this._layoutManager.transitionIndicator.transitionElements( this._element, dragProxy.element );
 	}
-});
+} );

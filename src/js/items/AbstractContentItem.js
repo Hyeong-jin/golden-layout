@@ -1,4 +1,3 @@
-
 /**
  * This is the baseclass that all content items inherit from.
  * Most methods provide a subset of what the sub-classes do.
@@ -10,6 +9,7 @@
  * @param {lm.item} parent
  *
  * @event stateChanged
+ * @event beforeItemDestroyed
  * @event itemDestroyed
  * @event itemCreated
  * @event componentCreated
@@ -40,16 +40,16 @@ lm.items.AbstractContentItem = function( layoutManager, config, parent ) {
 	this._throttledEvents = [ 'stateChanged' ];
 
 	this.on( lm.utils.EventEmitter.ALL_EVENT, this._propagateEvent, this );
-	
+
 	if( config.content ) {
 		this._createContentItems( config );
 	}
 };
 
 lm.utils.copy( lm.items.AbstractContentItem.prototype, {
-	
+
 	/**
-	 * Set the size of the component and its children, called recoursively
+	 * Set the size of the component and its children, called recursively
 	 *
 	 * @abstract
 	 * @returns void
@@ -59,7 +59,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	},
 
 	/**
-	 * Calls a method recoursively downwards on the tree
+	 * Calls a method recursively downwards on the tree
 	 *
 	 * @param   {String} functionName      the name of the function to be called
 	 * @param   {[Array]}functionArguments optional arguments that are passed to every function
@@ -90,7 +90,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	 * @returns {void}
 	 */
 	removeChild: function( contentItem, keepChild ) {
-		
+
 		/*
 		 * Get the position of the item that's to be removed within all content items this node contains
 		 */
@@ -109,7 +109,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 		if( keepChild !== true ) {
 			this.contentItems[ index ]._$destroy();
 		}
-		
+
 		/**
 		 * Remove the content item from this nodes array of children
 		 */
@@ -126,9 +126,9 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 		if( this.contentItems.length > 0 ) {
 			this.callDownwards( 'setSize' );
 
-		/**
-		 * If this was the last content item, remove this node as well
-		 */
+			/**
+			 * If this was the last content item, remove this node as well
+			 */
 		} else if( !(this instanceof lm.items.Root) && this.config.isClosable === true ) {
 			this.parent.removeChild( this );
 		}
@@ -143,7 +143,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	 * @param {[Int]} index If omitted item will be appended
 	 */
 	addChild: function( contentItem, index ) {
-		if ( index === undefined ) {
+		if( index === undefined ) {
 			index = this.contentItems.length;
 		}
 
@@ -155,7 +155,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 
 		this.config.content.splice( index, 0, contentItem.config );
 		contentItem.parent = this;
-		
+
 		if( contentItem.parent.isInitialised === true && contentItem.isInitialised === false ) {
 			contentItem._$init();
 		}
@@ -190,12 +190,19 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 			oldChild.parent = null;
 			oldChild._$destroy();
 		}
-		
+
 		/*
 		 * Wire the new contentItem into the tree
 		 */
 		this.contentItems[ index ] = newChild;
 		newChild.parent = this;
+
+		/*
+		 * Update tab reference
+		 */
+		if( this.isStack ) {
+			this.header.tabs[ index ].contentItem = newChild;
+		}
 
 		//TODO This doesn't update the config... refactor to leave item nodes untouched after creation
 		if( newChild.parent.isInitialised === true && newChild.isInitialised === false ) {
@@ -206,7 +213,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	},
 
 	/**
-	 * Convenience method. 
+	 * Convenience method.
 	 * Shorthand for this.parent.removeChild( this )
 	 *
 	 * @returns {void}
@@ -216,7 +223,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	},
 
 	/**
-	 * Removes the component from the layout and creates a new 
+	 * Removes the component from the layout and creates a new
 	 * browser window with the component and its children inside
 	 *
 	 * @returns {lm.controls.BrowserPopout}
@@ -232,7 +239,8 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	 *
 	 * @returns {void}
 	 */
-	toggleMaximise: function() {
+	toggleMaximise: function( e ) {
+		e && e.preventDefault();
 		if( this.isMaximised === true ) {
 			this.layoutManager._$minimiseItem( this );
 		} else {
@@ -269,7 +277,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 
 	/**
 	 * Set this component's title
-	 * 
+	 *
 	 * @public
 	 * @param {String} title
 	 *
@@ -335,7 +343,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 		if( !this.hasId( id ) ) {
 			throw new Error( 'Id not found' );
 		}
-		
+
 		if( typeof this.config.id === 'string' ) {
 			delete this.config.id;
 		} else if( this.config.id instanceof Array ) {
@@ -345,13 +353,13 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	},
 
 	/****************************************
-	* SELECTOR
-	****************************************/
+	 * SELECTOR
+	 ****************************************/
 	getItemsByFilter: function( filter ) {
 		var result = [],
 			next = function( contentItem ) {
 				for( var i = 0; i < contentItem.contentItems.length; i++ ) {
-					
+
 					if( filter( contentItem.contentItems[ i ] ) === true ) {
 						result.push( contentItem.contentItems[ i ] );
 					}
@@ -365,13 +373,13 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	},
 
 	getItemsById: function( id ) {
-		return this.getItemsByFilter( function( item ){
+		return this.getItemsByFilter( function( item ) {
 			if( item.config.id instanceof Array ) {
 				return lm.utils.indexOf( id, item.config.id ) !== -1;
 			} else {
 				return item.config.id === id;
 			}
-		});
+		} );
 	},
 
 	getItemsByType: function( type ) {
@@ -391,12 +399,12 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	},
 
 	/****************************************
-	* PACKAGE PRIVATE
-	****************************************/
+	 * PACKAGE PRIVATE
+	 ****************************************/
 	_$getItemsByProperty: function( key, value ) {
-		return this.getItemsByFilter( function( item ){
+		return this.getItemsByFilter( function( item ) {
 			return item[ key ] === value;
-		});
+		} );
 	},
 
 	_$setParent: function( parent ) {
@@ -436,13 +444,14 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 			}
 		}
 	},
-	
+
 	/**
 	 * Destroys this item ands its children
 	 *
 	 * @returns {void}
 	 */
 	_$destroy: function() {
+		this.emitBubblingEvent( 'beforeItemDestroyed' );
 		this.callDownwards( '_$destroy', [], true, true );
 		this.element.remove();
 		this.emitBubblingEvent( 'itemDestroyed' );
@@ -478,13 +487,13 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 
 	/**
 	 * The tree of content items is created in two steps: First all content items are instantiated,
-	 * then init is called recoursively from top to bottem. This is the basic init function,
+	 * then init is called recursively from top to bottem. This is the basic init function,
 	 * it can be used, extended or overwritten by the content items
-	 * 
+	 *
 	 * Its behaviour depends on the content item
 	 *
 	 * @package private
-	 * 
+	 *
 	 * @returns {void}
 	 */
 	_$init: function() {
@@ -541,13 +550,13 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	 * @returns {configuration item node} extended config
 	 */
 	_extendItemNode: function( config ) {
-		
+
 		for( var key in lm.config.itemDefaultConfig ) {
 			if( config[ key ] === undefined ) {
 				config[ key ] = lm.config.itemDefaultConfig[ key ];
 			}
 		}
-		
+
 		return config;
 	},
 
@@ -555,8 +564,8 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 	 * Called for every event on the item tree. Decides whether the event is a bubbling
 	 * event and propagates it to its parent
 	 *
-	 * @param	{String} name the name of the event
-	 * @param   {lm.utils.BubblingEvent} event 
+	 * @param    {String} name the name of the event
+	 * @param   {lm.utils.BubblingEvent} event
 	 *
 	 * @returns {void}
 	 */
@@ -564,7 +573,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 		if( event instanceof lm.utils.BubblingEvent &&
 			event.isPropagationStopped === false &&
 			this.isInitialised === true ) {
-			
+
 			/**
 			 * In some cases (e.g. if an element is created from a DragSource) it
 			 * doesn't have a parent and is not below root. If that's the case
@@ -598,7 +607,7 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 				lm.utils.animFrame( lm.utils.fnBind( this._propagateEventToLayoutManager, this, [ name, event ] ) );
 			}
 		}
-		
+
 	},
 
 	/**
@@ -613,4 +622,4 @@ lm.utils.copy( lm.items.AbstractContentItem.prototype, {
 		this._pendingEventPropagations[ name ] = false;
 		this.layoutManager.emit( name, event );
 	}
-});
+} );
